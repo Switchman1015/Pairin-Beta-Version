@@ -16,10 +16,18 @@
       --radius:18px;--shadow:0 10px 30px rgba(0,0,0,.10);
       /* Type theme colors */
       --BOLD:#c01b53;--FRESH:#00a39a;--AROMA:#8b5cf6;--SWEET:#ff7aa2;--SPARK:#00a8ff;
+
+      /* Swipe feedback */
+      --left-color: var(--sky);
+      --right-color: var(--ok);
+      --left-alpha: 0;   /* 0..1 */
+      --right-alpha: 0;  /* 0..1 */
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    /* ✨華やかな背景：フルーツ×泡の抽象ブレンド */
-    body{margin:0;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;
+
+    /* ===== レイアウト（スクロール抑制） ===== */
+    html, body{height:100svh}
+    body{margin:0;color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif; overflow:hidden;
       background:
         radial-gradient(1100px 700px at 90% -10%, rgba(255,200,100,.35), transparent 60%),
         radial-gradient(900px 600px at -10% -10%, rgba(130,230,255,.35), transparent 60%),
@@ -27,30 +35,35 @@
         linear-gradient(180deg,#fffdf8,#fff7ef 40%, #fff3fa);
       background-attachment: fixed;
     }
-    /* 背景の泡エフェクト */
-    .bubbles{position:fixed;inset:0;pointer-events:none;opacity:.4}
-    .bubbles span{position:absolute;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.8);box-shadow:0 0 0 1px rgba(0,0,0,.04) inset;animation:float 12s linear infinite}
-    .bubbles span:nth-child(3n){width:6px;height:6px;animation-duration:10s}
-    .bubbles span:nth-child(5n){width:14px;height:14px;animation-duration:14s}
-    @keyframes float{from{transform:translateY(20vh)} to{transform:translateY(-120vh)}}
-
-    .wrap{min-height:100svh;display:flex;flex-direction:column}
-    header{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+    .wrap{height:100%;display:flex;flex-direction:column}
+    header{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
     .nav{display:flex;align-items:center;gap:12px;max-width:720px;margin:auto;padding:10px 16px}
     .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
     .brand-mark{width:28px;height:28px;border-radius:8px;background:conic-gradient(from 200deg,var(--brand),var(--sky),var(--ok));box-shadow:0 0 0 3px rgba(0,0,0,.04) inset}
     .brand-title{font-weight:800;letter-spacing:.3px}
     .hint{margin-left:auto;font-size:12px;color:var(--muted)}
 
-    main{flex:1;display:grid;place-items:center;padding:18px}
-    .stage{width:min(720px,100%);padding:12px}
+    main{flex:1;display:grid;place-items:center;padding:14px}
+    .stage{width:min(720px,100%);height:calc(100% - 0px);display:flex;flex-direction:column;gap:12px}
 
-    /* Screen switcher */
-    .screen{display:none}
+    /* 画面切替（各画面は内部スクロール可） */
+    .screen{display:none;min-height:0;flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
     .screen.active{display:block}
 
-    /* Card stack */
-    .stack{position:relative;height:68svh;min-height:460px}
+    /* バブル背景 */
+    .bubbles{position:fixed;inset:0;pointer-events:none;opacity:.35}
+    .bubbles span{position:absolute;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.85);box-shadow:0 0 0 1px rgba(0,0,0,.04) inset;animation:float 12s linear infinite}
+    .bubbles span:nth-child(3n){width:6px;height:6px;animation-duration:10s}
+    .bubbles span:nth-child(5n){width:14px;height:14px;animation-duration:14s}
+    @keyframes float{from{transform:translateY(20vh)} to{transform:translateY(-120vh)}}
+
+    /* 左右グラデフィードバック */
+    .lr-gradient{position:absolute;inset:0;pointer-events:none;border-radius:var(--radius);overflow:hidden}
+    .lr-gradient::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg, color-mix(in srgb, var(--left-color) calc(var(--left-alpha)*60%), transparent), transparent 40%);}
+    .lr-gradient::after{content:"";position:absolute;inset:0;background:linear-gradient(270deg, color-mix(in srgb, var(--right-color) calc(var(--right-alpha)*60%), transparent), transparent 40%);}
+
+    /* カード */
+    .stack{position:relative;flex:1;min-height:420px;touch-action:pan-x}
     .card{position:absolute;inset:0;background:linear-gradient(180deg,#fff,#f9f9ff);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;overflow:hidden}
     .card::after{content:"";position:absolute;inset:auto -20% -40%;height:60%;background:radial-gradient(800px 200px at 50% 0%,rgba(0,0,0,.04),transparent 60%);pointer-events:none}
     .qbadge{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#fff}
@@ -59,24 +72,40 @@
 
     .opts{margin-top:auto;display:grid;gap:12px}
     .opt{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px 14px}
+    .opt-left{background:color-mix(in srgb, var(--left-color) 6%, #fff)}
+    .opt-right{background:color-mix(in srgb, var(--right-color) 6%, #fff)}
+    .opt.active-left{background:color-mix(in srgb, var(--left-color) 16%, #fff); border-color:color-mix(in srgb, var(--left-color) 35%, var(--line))}
+    .opt.active-right{background:color-mix(in srgb, var(--right-color) 16%, #fff); border-color:color-mix(in srgb, var(--right-color) 35%, var(--line))}
+
     .bullet{width:22px;height:22px;border-radius:50%;border:2px solid #d6d8e4}
     .opt span{font-size:15px}
 
-    /* 方向ヒント（左右どっちが何か） */
+    /* 方向チップ */
     .edges{position:absolute;inset:0;pointer-events:none;}
-    .edge{position:absolute;top:12px;display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12px;color:#4b5563;font-weight:700;opacity:.9}
+    .edge{position:absolute;top:12px;display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;font-size:12px;color:#4b5563;font-weight:700;opacity:.95}
     .edge.left{left:12px}
     .edge.right{right:12px}
     .edge .arrow{font-weight:900}
 
     /* SWIPEスタンプ */
     .ghost{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
-    .ghost span{font-size:48px;font-weight:900;letter-spacing:.08em;opacity:.08}
+    .ghost span{font-size:40px;font-weight:900;letter-spacing:.08em;opacity:.08}
 
-    .actions{display:flex;justify-content:center;gap:14px;margin-top:14px}
+    .actions{display:flex;justify-content:center;gap:14px}
     .btn{appearance:none;border:none;border-radius:16px;padding:14px 18px;background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:800}
     .btn.like{background:rgba(15,157,88,.08);border-color:rgba(15,157,88,.35)}
     .btn.pass{background:rgba(26,115,232,.08);border-color:rgba(26,115,232,.35)}
+    .btn.cta{background:#111827;color:#fff;border-color:#111827}
+
+    /* ===== Intro screens ===== */
+    .hero{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:18px}
+    .hero-mark{width:68px;height:68px;border-radius:20px;background:conic-gradient(from 200deg,var(--brand),var(--sky),var(--ok)); box-shadow:var(--shadow)}
+    .hero h1{margin:6px 0 0 0;font-size:28px;line-height:1.25}
+    .hero p{margin:0;color:#4b5563}
+
+    .howto{display:grid;gap:10px;padding:14px}
+    .howto .row{display:flex;align-items:center;gap:10px;border:1px dashed var(--line);background:#fff;border-radius:14px;padding:12px}
+    .tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;border:1px solid var(--line);background:#fff;font-size:12px}
 
     /* Result full screen */
     #screen-result{min-height:78svh}
@@ -86,7 +115,7 @@
     .type-name{font-weight:800}
     .type-title{font-family:"Playfair Display",serif;font-size:32px;line-height:1.25;margin:4px 0}
     .type-desc{color:var(--muted)}
-    .recs{display:grid;gap:12px;margin-top:14px}
+    .recs{display:grid;gap:12px;margin-top:4px}
     .wine{display:flex;gap:12px;border:1px solid var(--line);background:linear-gradient(180deg,#fff,#fbfbff);border-radius:14px;padding:12px}
     .wine img{width:64px;height:64px;object-fit:contain;border-radius:10px;background:#fff;border:1px solid var(--line)}
     .wine .wname{font-weight:800}
@@ -96,7 +125,7 @@
     .cta a.buy{border-color:transparent}
 
     /* Footer */
-    footer{padding:12px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;text-align:center;background:rgba(255,255,255,.7)}
+    footer{padding:10px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;text-align:center;background:rgba(255,255,255,.7)}
 
     /* Theme per type */
     .theme-BOLD{--accent:var(--BOLD)}
@@ -139,9 +168,35 @@
 
     <main>
       <div class="stage">
+        <!-- Screen: Intro 1 (Title) -->
+        <section id="screen-intro1" class="screen active">
+          <div class="hero">
+            <div class="hero-mark"></div>
+            <h1>ワインで“あなた”にマッチング</h1>
+            <p>10問に直感で答えるだけ。<br>フェスの一杯を、もっと好きに。</p>
+            <button class="btn cta" id="go-intro2">はじめる</button>
+          </div>
+          <div class="howto">
+            <div class="row"><span class="tag">左右スワイプ</span><span>左にスワイプ＝<b>パス</b>。右にスワイプ＝<b>LIKE</b>。</span></div>
+            <div class="row"><span class="tag">タップでもOK</span><span>下のボタンでも同じ操作ができます。</span></div>
+          </div>
+        </section>
+
+        <!-- Screen: Intro 2 (How-to / Demo) -->
+        <section id="screen-intro2" class="screen">
+          <div class="hero" style="padding-top:6px">
+            <h1 style="margin-top:0">操作ガイド</h1>
+            <p>カードを左右に動かすと、<b>背景が左右の色で光り</b>、<br>対応する選択肢が<b>強調</b>されます。</p>
+            <button class="btn cta" id="go-quiz">質問へ進む</button>
+          </div>
+        </section>
+
         <!-- Screen: Quiz -->
-        <section id="screen-quiz" class="screen active" aria-live="polite">
-          <div id="stack" class="stack"></div>
+        <section id="screen-quiz" class="screen" aria-live="polite">
+          <div style="position:relative;height:100%">
+            <div class="lr-gradient"></div>
+            <div id="stack" class="stack"></div>
+          </div>
           <div class="actions">
             <button class="btn pass" id="btn-pass" aria-label="PASS">← パス（左）</button>
             <button class="btn like" id="btn-like" aria-label="LIKE">LIKE（右） →</button>
@@ -190,19 +245,18 @@ const DataLoader = {
  ********************/
 const CSV = {
   parse(str){
-    // 改行を正規表現で安全に分割
     const [head, ...rows] = str.trim().split(/\r?\n/);
-    const keys = head.split(',').map(s => s.trim());
-    return rows.map(line => {
-      const vals = line.split(',').map(s => s.trim());
-      const o = {};
-      keys.forEach((k, i) => o[k] = vals[i] ?? '');
-      if (o.price) o.price = Number(o.price);
-      if (o.tags) o.tags = o.tags.split('|').map(t => t.trim());
+    const keys = head.split(',').map(s=>s.trim());
+    return rows.map((line)=>{
+      const vals = line.split(',').map(s=>s.trim());
+      const o={}; keys.forEach((k,i)=>o[k]=vals[i]??'');
+      if(o.price) o.price = Number(o.price);
+      if(o.tags) o.tags = o.tags.split('|').map(t=>t.trim());
       return o;
     });
   }
 };
+
 /********************
  * Domain Models (OOP)
  ********************/
@@ -221,13 +275,21 @@ class Matcher{ constructor(repo){ this.repo=repo; } recommend(type,limit=6){ con
  * Screen Controller
  ********************/
 const Screens = {
+  intro1: document.getElementById('screen-intro1'),
+  intro2: document.getElementById('screen-intro2'),
   quiz: document.getElementById('screen-quiz'),
   result: document.getElementById('screen-result'),
   loading: document.getElementById('loading'),
-  show(name){ this.quiz.classList.remove('active'); this.result.classList.remove('active'); if(name==='quiz') this.quiz.classList.add('active'); if(name==='result') this.result.classList.add('active'); },
+  show(name){
+    for(const s of [this.intro1,this.intro2,this.quiz,this.result]) s.classList.remove('active');
+    if(name==='intro1') this.intro1.classList.add('active');
+    if(name==='intro2') this.intro2.classList.add('active');
+    if(name==='quiz') this.quiz.classList.add('active');
+    if(name==='result') this.result.classList.add('active');
+  },
   async showLoadingThen(fn){ this.loading.classList.add('active'); const tips=[ '味わいマトリクスを解析しています', 'あなたの好みをペアリング中…', 'ワインの旅支度をしています' ];
     const sub=document.getElementById('loading-sub'); let i=0; const t=setInterval(()=>{sub.textContent=tips[i++%tips.length]}, 900);
-    await new Promise(r=>setTimeout(r, 1400));
+    await new Promise(r=>setTimeout(r, 1200));
     clearInterval(t); this.loading.classList.remove('active'); fn(); }
 };
 
@@ -237,9 +299,9 @@ const Screens = {
 const UI = {
   stackEl: document.getElementById('stack'),
   root: document.documentElement,
+  lr: document.querySelector('.lr-gradient'),
   mountStack(quiz){
     this.stackEl.innerHTML='';
-    // build bottom->top with zIndex so最上面=最初の質問
     for(let i=quiz.index;i<quiz.questions.length;i++){
       const q=quiz.questions[i];
       const el=UI.createCard(q,i+1,quiz.questions.length);
@@ -259,14 +321,19 @@ const UI = {
       </div>
       <div class="ghost"><span>左右にスワイプ</span></div>
       <div class="opts">
-        <div class="opt"><div class="bullet"></div><span>${q.left}</span></div>
-        <div class="opt"><div class="bullet"></div><span>${q.right}</span></div>
+        <div class="opt opt-left"><div class="bullet"></div><span>${q.left}</span></div>
+        <div class="opt opt-right"><div class="bullet"></div><span>${q.right}</span></div>
       </div>`; return el; },
-  attachTopCardGesture(quiz){ const top=this.stackEl.querySelector('.card:last-child'); if(!top) return; const mc=new Hammer(top); mc.get('pan').set({direction:Hammer.DIRECTION_HORIZONTAL, threshold:8}); let dx=0; let decided=null; const ghost=top.querySelector('.ghost span');
-    const onTransform=()=>{ const rot=dx/22; const ty=Math.abs(dx)/10*-1; const alpha=Math.min(Math.abs(dx)/160,1); top.style.transform=`translate(${dx}px, ${ty}px) rotate(${rot}deg)`; top.style.opacity=String(1-alpha*0.06); ghost.textContent= dx>0? 'LIKE →' : '← PASS'; ghost.style.opacity=.08+alpha*.28; ghost.style.color= dx>0? 'var(--ok)':'var(--sky)'; };
+  setGradient(dx){ // - for left, + for right
+    const a = Math.min(Math.abs(dx)/180, 1);
+    document.documentElement.style.setProperty('--left-alpha', dx<0 ? a : 0);
+    document.documentElement.style.setProperty('--right-alpha', dx>0 ? a : 0);
+  },
+  attachTopCardGesture(quiz){ const top=this.stackEl.querySelector('.card:last-child'); if(!top) return; const mc=new Hammer(top); mc.get('pan').set({direction:Hammer.DIRECTION_HORIZONTAL, threshold:8}); let dx=0; let decided=null; const ghost=top.querySelector('.ghost span'); const optL=top.querySelector('.opt-left'); const optR=top.querySelector('.opt-right');
+    const onTransform=()=>{ const rot=dx/22; const ty=Math.abs(dx)/10*-1; const alpha=Math.min(Math.abs(dx)/160,1); top.style.transform=`translate(${dx}px, ${ty}px) rotate(${rot}deg)`; top.style.opacity=String(1-alpha*0.06); ghost.textContent= dx>0? 'LIKE →' : '← PASS'; ghost.style.opacity=.08+alpha*.28; ghost.style.color= dx>0? 'var(--ok)':'var(--sky)'; UI.setGradient(dx); optL.classList.toggle('active-left', dx<0 && Math.abs(dx)>30); optR.classList.toggle('active-right', dx>0 && Math.abs(dx)>30); };
     mc.on('pan', ev=>{ dx=ev.deltaX; onTransform(); });
-    const decide=(dir)=>{ top.style.transition='.25s'; top.style.transform=`translate(${dir==='right'? 500:-500}px, -20px) rotate(${dir==='right'? 14:-14}deg)`; setTimeout(()=>{ top.remove(); quiz.answer(dir==='right'? 'right':'left'); if(!quiz.finished()){ UI.attachTopCardGesture(quiz);} else { Screens.showLoadingThen(()=>UI.showResult(quiz)); } }, 180); };
-    mc.on('panend', ()=>{ if(Math.abs(dx)>120){ decided = dx>0? 'right' : 'left'; } if(!decided){ top.style.transition='.25s'; top.style.transform='translate(0,0)'; top.style.opacity='1'; return setTimeout(()=>top.style.transition='',250); } decide(decided); });
+    const decide=(dir)=>{ top.style.transition='.25s'; top.style.transform=`translate(${dir==='right'? 500:-500}px, -20px) rotate(${dir==='right'? 14:-14}deg)`; setTimeout(()=>{ top.remove(); UI.setGradient(0); quiz.answer(dir==='right'? 'right':'left'); if(!quiz.finished()){ UI.attachTopCardGesture(quiz);} else { Screens.showLoadingThen(()=>UI.showResult(quiz)); } }, 180); };
+    mc.on('panend', ()=>{ if(Math.abs(dx)>120){ decided = dx>0? 'right' : 'left'; } if(!decided){ top.style.transition='.2s'; top.style.transform='translate(0,0)'; top.style.opacity='1'; UI.setGradient(0); optL.classList.remove('active-left'); optR.classList.remove('active-right'); return setTimeout(()=>top.style.transition='',200); } decide(decided); });
   },
   linkButtons(quiz){ const like=()=>{ const top=this.stackEl.querySelector('.card:last-child'); if(!top) return; top.style.transition='.25s'; top.style.transform='translate(500px,-20px) rotate(14deg)'; setTimeout(()=>{ top.remove(); quiz.answer('right'); if(!quiz.finished()) UI.attachTopCardGesture(quiz); else Screens.showLoadingThen(()=>UI.showResult(quiz)); },180); };
     const pass=()=>{ const top=this.stackEl.querySelector('.card:last-child'); if(!top) return; top.style.transition='.25s'; top.style.transform='translate(-500px,-20px) rotate(-14deg)'; setTimeout(()=>{ top.remove(); quiz.answer('left'); if(!quiz.finished()) UI.attachTopCardGesture(quiz); else Screens.showLoadingThen(()=>UI.showResult(quiz)); },180); };
@@ -276,11 +343,10 @@ const UI = {
     const h=[]; h.push(`<div class=\"pill\"><span class=\"type-dot\" style=\"background:var(--accent)\"></span><span class=\"type-name\">TYPE: <span class='accent'>${type}</span></span></div>`);
     h.push(`<div class=\"type-title\">マッチングしました！ ${copy.title}</div>`);
     h.push(`<div class=\"type-desc\">${copy.desc}</div>`);
-    if(!wines.length){ h.push(`<p style='margin-top:12px'>該当のワインがありませんでした。<br>データの <code>type</code> を <code>${type}</code> に設定した銘柄を追加してください。</p>`); }
+    if(!wines.length){ h.push(`<p style='margin-top:6px'>該当のワインがありませんでした。<br>データの <code>type</code> を <code>${type}</code> に設定した銘柄を追加してください。</p>`); }
     else{ h.push(`<div class='recs'>${wines.map(w=>UI.renderWine(w)).join('')}</div>`); }
     Screens.result.innerHTML = `<div class='result-hero'>${h.join('')}</div>`;
     Screens.show('result');
-    Screens.result.scrollIntoView({behavior:'smooth', block:'start'});
   },
   renderWine(w){ const tag=w.type||'WINE'; const img=w.image||'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/wine.svg'; const price=w.price? `¥${w.price.toLocaleString()}`:''; const shop=w.link? `<a class=\"buy\" href=\"${w.link}\" target=\"_blank\" rel=\"noopener\">購入ページ</a>`:''; const detail=w.detail? `<a href=\"${w.detail}\" target=\"_blank\" rel=\"noopener\">詳細</a>`:'';
     return `<div class=\"wine\"><img alt=\"${w.name}\" src=\"${img}\" /><div><div class=\"wname\">${w.name}</div><div class=\"wmeta\">${tag}・${w.region||''} ${price}</div><div class=\"wmeta\">${w.notes||''}</div></div><div class=\"cta\">${shop}${detail}</div></div>`; }
@@ -320,14 +386,16 @@ const DefaultData={
 };
 
 /********************
- * App Bootstrap with DOM ready & error guard
+ * App Bootstrap with DOM ready
  ********************/
 const app={ quiz:null, repo:null, matcher:null,
   async start(){ try{ const [questions,wines]=await Promise.all([ DataLoader.loadQuestions(), DataLoader.loadWines() ]);
       this.quiz=new QuizEngine(questions); this.repo=new WineRepo(wines); this.matcher=new Matcher(this.repo);
       UI.linkButtons(this.quiz); UI.mountStack(this.quiz);
-      // Fallback: スタックが空ならメッセージ
-      if(!document.querySelector('#stack .card')){ document.getElementById('stack').innerHTML = `<div style='padding:16px;border:1px dashed var(--line);border-radius:12px;background:#fff'>データの読み込みに失敗しました。/data/questions.json か DefaultData を確認してください。</div>`; }
+      // Intro buttons
+      document.getElementById('go-intro2').addEventListener('click',()=>Screens.show('intro2'));
+      document.getElementById('go-quiz').addEventListener('click',()=>Screens.show('quiz'));
+      Screens.show('intro1');
     }catch(err){ console.error(err); document.getElementById('stack').innerHTML = `<div style='padding:16px;border:1px dashed var(--line);border-radius:12px;background:#fff'>スクリプトエラーが発生しました。</div>`; }
   }
 };
