@@ -188,10 +188,21 @@ const DataLoader = {
 /********************
  * Lightweight CSV
  ********************/
-const CSV = { parse(str){ const [head,...rows]=str.trim().split(/
-?
-/); const keys=head.split(',').map(s=>s.trim()); return rows.map(line=>{ const vals=line.split(',').map(s=>s.trim()); const o={}; keys.forEach((k,i)=>o[k]=vals[i]??''); if(o.price) o.price=Number(o.price); if(o.tags) o.tags=o.tags.split('|').map(t=>t.trim()); return o; }); } };
-
+const CSV = {
+  parse(str){
+    // 改行を正規表現で安全に分割
+    const [head, ...rows] = str.trim().split(/\r?\n/);
+    const keys = head.split(',').map(s => s.trim());
+    return rows.map(line => {
+      const vals = line.split(',').map(s => s.trim());
+      const o = {};
+      keys.forEach((k, i) => o[k] = vals[i] ?? '');
+      if (o.price) o.price = Number(o.price);
+      if (o.tags) o.tags = o.tags.split('|').map(t => t.trim());
+      return o;
+    });
+  }
+};
 /********************
  * Domain Models (OOP)
  ********************/
