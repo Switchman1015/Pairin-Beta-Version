@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Pairin Lite｜ワイン・マッチング（フェス用）</title>
+  <meta name="description" content="10問の2択にスワイプで答えると、あなたに合うワインタイプとおすすめ銘柄を提案します。YORUGOS フェス／試飲ブース用。" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+  <!-- Hammer.js for swipe -->
+  <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <style>
+    :root{
+      --bg:#0f0f12;--card:#15161b;--ink:#f6f7fb;--muted:#aeb3bd;--line:#242736;
+      --ok:#9ae6b4;--warn:#ffd66e;--rose:#ffb7c5;--sky:#7cc7ff;--brand:#d8b4fe;
+      --radius:18px;--shadow:0 8px 24px rgba(0,0,0,.25);
+      /* Type theme colors */
+      --BOLD:#c01b53;--FRESH:#00a39a;--AROMA:#8b5cf6;--SWEET:#ff7aa2;--SPARK:#00a8ff;
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{margin:0;background:radial-gradient(1200px 800px at 70% -10%,#1b1d26 0%,#0f0f12 60%);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif}
+    .wrap{min-height:100svh;display:flex;flex-direction:column}
+    header{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,rgba(15,15,18,.9),rgba(15,15,18,.6));backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+    .nav{display:flex;align-items:center;gap:12px;max-width:720px;margin:auto;padding:10px 16px}
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+    .brand-mark{width:28px;height:28px;border-radius:8px;background:conic-gradient(from 200deg,var(--brand),var(--sky),var(--ok));box-shadow:0 0 0 3px rgba(255,255,255,.05) inset}
+    .brand-title{font-weight:800;letter-spacing:.3px}
+    .hint{margin-left:auto;font-size:12px;color:var(--muted)}
+
+    main{flex:1;display:grid;place-items:center;padding:20px}
+    .stage{width:min(720px,100%);padding:12px}
+
+    /* Card stack */
+    .stack{position:relative;height:68svh;min-height:460px}
+    .card{position:absolute;inset:0;background:linear-gradient(180deg,#191a20,#121319);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;overflow:hidden}
+    .card::after{content:"";position:absolute;inset:auto -20% -40%;height:60%;background:radial-gradient(800px 200px at 50% 0%,rgba(255,255,255,.06),transparent 60%);pointer-events:none}
+    .qbadge{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 10px}
+    .qtext{margin:14px 0 6px 0;font-size:22px;line-height:1.35;font-weight:700}
+    .qsub{color:var(--muted);font-size:13px}
+
+    .opts{margin-top:auto;display:grid;gap:12px}
+    .opt{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:#111218;border-radius:14px;padding:12px 14px}
+    .bullet{width:22px;height:22px;border-radius:50%;border:2px solid #2a2d3a}
+    .opt span{font-size:15px}
+
+    .ghost{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+    .ghost span{font-size:64px;font-weight:800;letter-spacing:.08em;opacity:.06}
+
+    .actions{display:flex;justify-content:center;gap:14px;margin-top:14px}
+    .btn{appearance:none;border:none;border-radius:16px;padding:14px 18px;background:#141520;color:var(--ink);border:1px solid var(--line);font-weight:700}
+    .btn.like{background:rgba(154,230,180,.08);border-color:rgba(154,230,180,.3)}
+    .btn.pass{background:rgba(124,199,255,.08);border-color:rgba(124,199,255,.3)}
+
+    /* Result */
+    .result{display:none;gap:16px}
+    .result.active{display:block}
+    .hero{display:flex;align-items:center;gap:14px}
+    .pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;border:1px solid var(--line);padding:8px 12px;background:#141520}
+    .type-dot{width:10px;height:10px;border-radius:50%}
+    .type-name{font-weight:800}
+    .type-title{font-family:"Playfair Display",serif;font-size:28px;line-height:1.2;margin:8px 0}
+    .type-desc{color:var(--muted)}
+    .recs{display:grid;gap:12px;margin-top:18px}
+    .wine{display:flex;gap:12px;border:1px solid var(--line);background:linear-gradient(180deg,#171822,#0e0f14);border-radius:14px;padding:12px}
+    .wine img{width:64px;height:64px;object-fit:contain;border-radius:10px;background:#0c0d12;border:1px solid var(--line)}
+    .wine .wname{font-weight:700}
+    .wine .wmeta{color:var(--muted);font-size:13px}
+    .cta{margin-left:auto;display:flex;flex-direction:column;gap:8px}
+    .cta a{display:inline-flex;justify-content:center;align-items:center;border-radius:12px;padding:10px 12px;border:1px solid var(--line);text-decoration:none;color:var(--ink)}
+    .cta a.buy{border-color:transparent}
+
+    /* Footer */
+    footer{padding:14px 16px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;text-align:center}
+
+    /* Theme per type */
+    .theme-BOLD{--accent:var(--BOLD)}
+    .theme-FRESH{--accent:var(--FRESH)}
+    .theme-AROMA{--accent:var(--AROMA)}
+    .theme-SWEET{--accent:var(--SWEET)}
+    .theme-SPARK{--accent:var(--SPARK)}
+    .accent{color:var(--accent)}
+    .btn.like,.pill,.wine .tag,.cta a.buy{background:color-mix(in srgb,var(--accent) 24%, transparent)}
+    .cta a.buy{border:1px solid color-mix(in srgb,var(--accent) 40%, #000)}
+    .qbadge{border-color:color-mix(in srgb,var(--accent) 40%, var(--line))}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="nav">
+        <a class="brand" href="#" aria-label="home"><span class="brand-mark"></span><span class="brand-title">Pairin<span style="opacity:.6">｜YORUGOS</span></span></a>
+        <span class="hint">左右にスワイプ／タップで回答</span>
+      </div>
+    </header>
+
+    <main>
+      <div class="stage">
+        <!-- Stack zone -->
+        <div id="stack" class="stack"></div>
+
+        <!-- Action buttons -->
+        <div class="actions">
+          <button class="btn pass" id="btn-pass" aria-label="PASS">← パス</button>
+          <button class="btn like" id="btn-like" aria-label="LIKE">LIKE →</button>
+        </div>
+
+        <!-- Result screen -->
+        <section id="result" class="result" aria-live="polite"></section>
+      </div>
+    </main>
+
+    <footer>
+      © YORUGOS. この簡易版は GitHub Pages で動作します。質問・ワインは /data 配下の JSON / CSV を差し替えるだけ。
+    </footer>
+  </div>
+
+<script>
+/********************
+ * Data Loading Layer
+ ********************/
+const DataLoader = {
+  async loadQuestions(){
+    try{ // Prefer external file: /data/questions.json
+      const res = await fetch('./data/questions.json?ts=' + Date.now());
+      if(!res.ok) throw new Error('no external questions');
+      return await res.json();
+    }catch(e){
+      return DefaultData.questions; // fallback
+    }
+  },
+  async loadWines(){
+    // Try CSV first -> JSON -> fallback
+    try{
+      const csv = await fetch('./data/wines.csv?ts=' + Date.now());
+      if(csv.ok){
+        const text = await csv.text();
+        return CSV.parse(text); // to array of objects
+      }
+      throw new Error('no csv');
+    }catch(e){
+      try{
+        const res = await fetch('./data/wines.json?ts=' + Date.now());
+        if(!res.ok) throw new Error('no json');
+        return await res.json();
+      }catch(err){
+        return DefaultData.wines; // fallback
+      }
+    }
+  }
+};
+
+/********************
+ * Lightweight CSV
+ ********************/
+const CSV = {
+  parse(str){
+    const [head, ...rows] = str.trim().split(/\r?\n/);
+    const keys = head.split(',').map(s=>s.trim());
+    return rows.map((line)=>{
+      // very simple split; expects values not to contain embedded commas
+      const vals = line.split(',').map(s=>s.trim());
+      const o={}; keys.forEach((k,i)=>o[k]=vals[i]??'');
+      // type normalization
+      if(o.price) o.price = Number(o.price);
+      if(o.tags) o.tags = o.tags.split('|').map(t=>t.trim());
+      return o;
+    });
+  }
+};
+
+/********************
+ * Domain Models (OOP)
+ ********************/
+class Question{
+  constructor({id,text,left,right,weights,subtitle}){
+    this.id=id;this.text=text;this.left=left;this.right=right;this.weights=weights;this.subtitle=subtitle||'';
+  }
+}
+class QuizEngine{
+  constructor(questions){
+    this.questions = questions.map(q=>new Question(q));
+    this.index=0;
+    this.scores = {BOLD:0,FRESH:0,AROMA:0,SWEET:0,SPARK:0};
+    this.answers=[]; // {id, choice}
+  }
+  current(){return this.questions[this.index]}
+  finished(){return this.index>=this.questions.length}
+  answer(choice){
+    const q = this.current();
+    if(!q) return;
+    const w = q.weights?.[choice]||{};
+    for(const k in w){ this.scores[k]=(this.scores[k]||0)+w[k]; }
+    this.answers.push({id:q.id,choice});
+    this.index++;
+  }
+  topType(){
+    const entries = Object.entries(this.scores);
+    entries.sort((a,b)=>b[1]-a[1]);
+    return entries[0][0];
+  }
+}
+class WineRepo{
+  constructor(wines){ this.wines = wines; }
+  byType(type){ return this.wines.filter(w=> (w.type||'').toUpperCase()===type ); }
+}
+class Matcher{
+  constructor(repo){ this.repo = repo; }
+  recommend(type,limit=6){
+    const list = this.repo.byType(type);
+    return list.slice(0,limit);
+  }
+}
+
+/********************
+ * UI / Controller
+ ********************/
+const UI = {
+  stackEl: document.getElementById('stack'),
+  resultEl: document.getElementById('result'),
+  root: document.documentElement,
+  mountStack(quiz){
+    this.stackEl.innerHTML='';
+    // create cards in reverse (last at bottom)
+    for(let i=quiz.questions.length-1;i>=quiz.index;i--){
+      const q = quiz.questions[i];
+      const el = UI.createCard(q, i+1, quiz.questions.length);
+      this.stackEl.appendChild(el);
+    }
+    UI.attachTopCardGesture(quiz);
+  },
+  createCard(q, idx, total){
+    const el = document.createElement('div');
+    el.className='card';
+    el.dataset.qid = q.id;
+    el.innerHTML = `
+      <div class="qbadge">Q${idx}/${total}・迷ったら感覚でOK</div>
+      <div class="qtext">${q.text}</div>
+      ${q.subtitle?`<div class="qsub">${q.subtitle}</div>`:''}
+      <div class="ghost"><span>SWIPE</span></div>
+      <div class="opts">
+        <div class="opt"><div class="bullet"></div><span>${q.left}</span></div>
+        <div class="opt"><div class="bullet"></div><span>${q.right}</span></div>
+      </div>
+    `;
+    return el;
+  },
+  attachTopCardGesture(quiz){
+    const top = this.stackEl.querySelector('.card:last-child');
+    if(!top){ return; }
+    const mc = new Hammer(top);
+    mc.get('pan').set({ direction: Hammer.DIRECTION_HORIZONTAL, threshold: 8 });
+    let dx=0; let decided=null;
+    const onTransform = ()=>{
+      const rot = dx/22; const ty = Math.abs(dx)/10*-1; const alpha = Math.min(Math.abs(dx)/160, 1);
+      top.style.transform=`translate(${dx}px, ${ty}px) rotate(${rot}deg)`;
+      top.style.opacity = String(1 - alpha*0.1);
+      top.querySelector('.ghost span').textContent = dx>0? 'LIKE' : 'PASS';
+      top.querySelector('.ghost span').style.opacity = .06 + alpha*.25;
+      top.querySelector('.ghost span').style.color = dx>0? 'var(--ok)' : 'var(--sky)';
+    };
+    mc.on('pan', ev=>{ dx = ev.deltaX; onTransform(); });
+    mc.on('panend', ev=>{
+      if(Math.abs(dx)>120){ decided = dx>0? 'right' : 'left'; }
+      // settle
+      if(!decided){ top.style.transition='.25s'; top.style.transform='translate(0,0)'; top.style.opacity='1'; return setTimeout(()=>top.style.transition='',250); }
+      top.style.transition='.25s';
+      top.style.transform=`translate(${decided==='right'? 500:-500}px, -20px) rotate(${decided==='right'? 14:-14}deg)`;
+      setTimeout(()=>{
+        top.remove();
+        quiz.answer(decided==='right'? 'right':'left');
+        if(!quiz.finished()){
+          UI.attachTopCardGesture(quiz); // next card
+        }else{
+          UI.showResult(quiz);
+        }
+      }, 180);
+    });
+  },
+  linkButtons(quiz){
+    document.getElementById('btn-like').onclick=()=>{
+      const top = this.stackEl.querySelector('.card:last-child');
+      if(!top) return;
+      top.style.transition='.25s'; top.style.transform='translate(500px,-20px) rotate(14deg)';
+      setTimeout(()=>{ top.remove(); quiz.answer('right'); if(!quiz.finished()) UI.attachTopCardGesture(quiz); else UI.showResult(quiz); }, 180);
+    };
+    document.getElementById('btn-pass').onclick=()=>{
+      const top = this.stackEl.querySelector('.card:last-child');
+      if(!top) return;
+      top.style.transition='.25s'; top.style.transform='translate(-500px,-20px) rotate(-14deg)';
+      setTimeout(()=>{ top.remove(); quiz.answer('left'); if(!quiz.finished()) UI.attachTopCardGesture(quiz); else UI.showResult(quiz); }, 180);
+    };
+  },
+  setThemeByType(type){
+    this.root.classList.remove('theme-BOLD','theme-FRESH','theme-AROMA','theme-SWEET','theme-SPARK');
+    const map={BOLD:'theme-BOLD',FRESH:'theme-FRESH',AROMA:'theme-AROMA',SWEET:'theme-SWEET',SPARK:'theme-SPARK'};
+    this.root.classList.add(map[type]||'');
+  },
+  showResult(quiz){
+    const type = quiz.topType();
+    UI.setThemeByType(type);
+    const copy = DefaultData.typeCopy[type] || {title:type,desc:''};
+    const wines = app.matcher.recommend(type, 6);
+    const h = [];
+    h.push(`<div class="pill"><span class="type-dot" style="background:var(--accent)"></span><span class="type-name">TYPE: <span class='accent'>${type}</span></span></div>`);
+    h.push(`<div class="type-title">マッチングしました！ ${copy.title}</div>`);
+    h.push(`<div class="type-desc">${copy.desc}</div>`);
+    if(!wines.length){
+      h.push(`<p style='margin-top:12px'>該当のワインがありませんでした。<br>データの <code>type</code> を <code>${type}</code> に設定した銘柄を追加してください。</p>`);
+    }else{
+      h.push(`<div class='recs'>${wines.map(w=>UI.renderWine(w)).join('')}</div>`);
+    }
+    this.resultEl.classList.add('active');
+    this.resultEl.innerHTML = `<div class='hero'>${h.join('')}</div>`;
+    // Scroll into view on mobile
+    this.resultEl.scrollIntoView({behavior:'smooth', block:'start'});
+  },
+  renderWine(w){
+    const tag = w.type || 'WINE';
+    const img = w.image || 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/wine.svg';
+    const price = w.price? `¥${w.price.toLocaleString()}` : '';
+    const shop = w.link? `<a class="buy" href="${w.link}" target="_blank" rel="noopener">購入ページ</a>`:'';
+    const detail = w.detail? `<a href="${w.detail}" target="_blank" rel="noopener">詳細</a>`:'';
+    return `
+      <div class="wine">
+        <img alt="${w.name}" src="${img}" />
+        <div>
+          <div class="wname">${w.name}</div>
+          <div class="wmeta">${tag}・${w.region||''} ${price}</div>
+          <div class="wmeta">${w.notes||''}</div>
+        </div>
+        <div class="cta">${shop}${detail}</div>
+      </div>`;
+  }
+};
+
+/********************
+ * Default Sample Data (used if /data is absent)
+ ********************/
+const DefaultData = {
+  typeCopy: {
+    BOLD:{ title:'コク深く、旨みリッチ', desc:'肉料理や濃い味の前菜に。余韻が長く、飲みごたえ重視のあなたへ。' },
+    FRESH:{ title:'爽やか＆ジューシー', desc:'柑橘や青リンゴのアロマ。和食や軽いおつまみにも◎。' },
+    AROMA:{ title:'香り華やか', desc:'白い花やハーブ、トロピカルな香り。香りで選びたい人に。' },
+    SWEET:{ title:'やさしい甘口', desc:'デザートやスパイス料理に。心地よい甘みで飲みやすい。' },
+    SPARK:{ title:'きらめく泡', desc:'乾杯や前菜に万能。ライト＆楽しい時間を演出。' }
+  },
+  questions: [
+    {id:'q1',  text:'初めての一杯。どっちに惹かれる？', left:'スッキリ爽快', right:'じんわり濃厚', weights:{left:{FRESH:2,SPARK:1}, right:{BOLD:2,AROMA:1}}},
+    {id:'q2',  text:'香りの印象は？', left:'控えめで清潔感', right:'華やかで印象的', weights:{left:{FRESH:2}, right:{AROMA:2}}},
+    {id:'q3',  text:'甘みはどのくらい？', left:'ほぼドライ', right:'ちょい甘～甘口', weights:{left:{FRESH:1,BOLD:1}, right:{SWEET:2}}},
+    {id:'q4',  text:'飲むシーンは？', left:'食事と合わせたい', right:'乾杯やおやつタイム', weights:{left:{BOLD:1,FRESH:1}, right:{SPARK:2,SWEET:1}}},
+    {id:'q5',  text:'温度は？', left:'キリッと冷やす', right:'少し温度高め', weights:{left:{FRESH:1,SPARK:1}, right:{BOLD:2}}},
+    {id:'q6',  text:'余韻の長さは？', left:'短めでリズミカル', right:'長くて複層的', weights:{left:{FRESH:1,SPARK:1}, right:{BOLD:2,AROMA:1}}},
+    {id:'q7',  text:'好きなペアリング', left:'お寿司／塩焼き', right:'濃いソース／肉', weights:{left:{FRESH:2,SPARK:1}, right:{BOLD:2}}},
+    {id:'q8',  text:'ラベルはどっち？', left:'ミニマル', right:'装飾的', weights:{left:{FRESH:1,SPARK:1}, right:{AROMA:1,SWEET:1}}},
+    {id:'q9',  text:'気分は？', left:'軽やかに進めたい', right:'腰を据えて楽しむ', weights:{left:{SPARK:2,FRESH:1}, right:{BOLD:2}}},
+    {id:'q10', text:'ワインの冒険心', left:'馴染み重視', right:'個性ウェルカム', weights:{left:{FRESH:1,SWEET:1}, right:{AROMA:2,BOLD:1}}}
+  ],
+  wines: [
+    {name:'CAIR カイール・ブリュット N/V', type:'SPARK', region:'Rhodes, Greece', price:3500, notes:'爽やかな泡。柑橘と白い花の香り。', link:'https://oinos.example/item/cair-brut', image:''},
+    {name:'モスコフィレロ ドメーヌ', type:'AROMA', region:'Peloponnese, Greece', price:4200, notes:'ジャスミンとハーブ。華やかな辛口白。', link:'https://oinos.example/item/moscofilero'},
+    {name:'サヴァティアノ ナチュール', type:'FRESH', region:'Attica, Greece', price:3100, notes:'青リンゴとレモン。すっきりとした酸。', link:'https://oinos.example/item/savatiano'},
+    {name:'クシノマヴロ リザーヴ', type:'BOLD', region:'Naoussa, Greece', price:5800, notes:'チェリーとスパイス。余韻長く複層。', link:'https://oinos.example/item/xinomavro'},
+    {name:'マヴロダフニ デザート', type:'SWEET', region:'Patras, Greece', price:3900, notes:'干し葡萄とカカオ。デザートに最適。', link:'https://oinos.example/item/mavrodaphne'},
+    {name:'アシルティコ サントリーニ', type:'FRESH', region:'Santorini, Greece', price:6500, notes:'火山性ミネラル、切れ味鋭い。', link:'https://oinos.example/item/assyrtiko'}
+  ]
+};
+
+/********************
+ * App Bootstrap
+ ********************/
+const app = {
+  quiz:null, repo:null, matcher:null,
+  async start(){
+    // Load external data or fallback
+    const [questions, wines] = await Promise.all([
+      DataLoader.loadQuestions(),
+      DataLoader.loadWines()
+    ]);
+    this.quiz = new QuizEngine(questions);
+    this.repo = new WineRepo(wines);
+    this.matcher = new Matcher(this.repo);
+    UI.linkButtons(this.quiz);
+    UI.mountStack(this.quiz);
+  }
+};
+
+app.start();
+</script>
+</body>
+</html>
