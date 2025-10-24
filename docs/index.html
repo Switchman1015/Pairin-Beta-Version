@@ -216,7 +216,7 @@ const Screens = {
   show(name){ this.quiz.classList.remove('active'); this.result.classList.remove('active'); if(name==='quiz') this.quiz.classList.add('active'); if(name==='result') this.result.classList.add('active'); },
   async showLoadingThen(fn){ this.loading.classList.add('active'); const tips=[ '味わいマトリクスを解析しています', 'あなたの好みをペアリング中…', 'ワインの旅支度をしています' ];
     const sub=document.getElementById('loading-sub'); let i=0; const t=setInterval(()=>{sub.textContent=tips[i++%tips.length]}, 900);
-    await new Promise(r=>setTimeout(r, 1400)); // 期待感
+    await new Promise(r=>setTimeout(r, 1400));
     clearInterval(t); this.loading.classList.remove('active'); fn(); }
 };
 
@@ -226,12 +226,22 @@ const Screens = {
 const UI = {
   stackEl: document.getElementById('stack'),
   root: document.documentElement,
-  mountStack(quiz){ this.stackEl.innerHTML=''; for(let i=quiz.questions.length-1;i>=quiz.index;i--){ const q=quiz.questions[i]; const el=UI.createCard(q,i+1,quiz.questions.length); this.stackEl.appendChild(el);} UI.attachTopCardGesture(quiz); },
+  mountStack(quiz){
+    this.stackEl.innerHTML='';
+    // build bottom->top with zIndex so最上面=最初の質問
+    for(let i=quiz.index;i<quiz.questions.length;i++){
+      const q=quiz.questions[i];
+      const el=UI.createCard(q,i+1,quiz.questions.length);
+      el.style.zIndex = String(100 + i);
+      this.stackEl.appendChild(el);
+    }
+    UI.attachTopCardGesture(quiz);
+  },
   createCard(q, idx, total){
     const el=document.createElement('div'); el.className='card'; el.dataset.qid=q.id; el.innerHTML=`
       <div class="qbadge">Q${idx}/${total}・迷ったら感覚でOK</div>
       <div class="qtext">${q.text}</div>
-      ${q.subtitle?`<div class="qsub">${q.subtitle}</div>`:''}
+      ${q.subtitle?`<div class=\"qsub\">${q.subtitle}</div>`:''}
       <div class="edges">
         <div class="edge left"><span class="arrow">←</span> パス</div>
         <div class="edge right">LIKE <span class="arrow">→</span></div>
@@ -252,17 +262,17 @@ const UI = {
     document.getElementById('btn-like').onclick=like; document.getElementById('btn-pass').onclick=pass; },
   setThemeByType(type){ this.root.classList.remove('theme-BOLD','theme-FRESH','theme-AROMA','theme-SWEET','theme-SPARK'); const map={BOLD:'theme-BOLD',FRESH:'theme-FRESH',AROMA:'theme-AROMA',SWEET:'theme-SWEET',SPARK:'theme-SPARK'}; this.root.classList.add(map[type]||''); },
   showResult(quiz){ const type=quiz.topType(); UI.setThemeByType(type); const copy=DefaultData.typeCopy[type]||{title:type,desc:''}; const wines=app.matcher.recommend(type,6);
-    const h=[]; h.push(`<div class="pill"><span class="type-dot" style="background:var(--accent)"></span><span class="type-name">TYPE: <span class='accent'>${type}</span></span></div>`);
-    h.push(`<div class="type-title">マッチングしました！ ${copy.title}</div>`);
-    h.push(`<div class="type-desc">${copy.desc}</div>`);
+    const h=[]; h.push(`<div class=\"pill\"><span class=\"type-dot\" style=\"background:var(--accent)\"></span><span class=\"type-name\">TYPE: <span class='accent'>${type}</span></span></div>`);
+    h.push(`<div class=\"type-title\">マッチングしました！ ${copy.title}</div>`);
+    h.push(`<div class=\"type-desc\">${copy.desc}</div>`);
     if(!wines.length){ h.push(`<p style='margin-top:12px'>該当のワインがありませんでした。<br>データの <code>type</code> を <code>${type}</code> に設定した銘柄を追加してください。</p>`); }
     else{ h.push(`<div class='recs'>${wines.map(w=>UI.renderWine(w)).join('')}</div>`); }
     Screens.result.innerHTML = `<div class='result-hero'>${h.join('')}</div>`;
     Screens.show('result');
     Screens.result.scrollIntoView({behavior:'smooth', block:'start'});
   },
-  renderWine(w){ const tag=w.type||'WINE'; const img=w.image||'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/wine.svg'; const price=w.price? `¥${w.price.toLocaleString()}`:''; const shop=w.link? `<a class="buy" href="${w.link}" target="_blank" rel="noopener">購入ページ</a>`:''; const detail=w.detail? `<a href="${w.detail}" target="_blank" rel="noopener">詳細</a>`:'';
-    return `<div class="wine"><img alt="${w.name}" src="${img}" /><div><div class="wname">${w.name}</div><div class="wmeta">${tag}・${w.region||''} ${price}</div><div class="wmeta">${w.notes||''}</div></div><div class="cta">${shop}${detail}</div></div>`; }
+  renderWine(w){ const tag=w.type||'WINE'; const img=w.image||'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/wine.svg'; const price=w.price? `¥${w.price.toLocaleString()}`:''; const shop=w.link? `<a class=\"buy\" href=\"${w.link}\" target=\"_blank\" rel=\"noopener\">購入ページ</a>`:''; const detail=w.detail? `<a href=\"${w.detail}\" target=\"_blank\" rel=\"noopener\">詳細</a>`:'';
+    return `<div class=\"wine\"><img alt=\"${w.name}\" src=\"${img}\" /><div><div class=\"wname\">${w.name}</div><div class=\"wmeta\">${tag}・${w.region||''} ${price}</div><div class=\"wmeta\">${w.notes||''}</div></div><div class=\"cta\">${shop}${detail}</div></div>`; }
 };
 
 /********************
@@ -299,16 +309,19 @@ const DefaultData={
 };
 
 /********************
- * App Bootstrap
+ * App Bootstrap with DOM ready & error guard
  ********************/
 const app={ quiz:null, repo:null, matcher:null,
-  async start(){ const [questions,wines]=await Promise.all([ DataLoader.loadQuestions(), DataLoader.loadWines() ]);
-    this.quiz=new QuizEngine(questions); this.repo=new WineRepo(wines); this.matcher=new Matcher(this.repo);
-    UI.linkButtons(this.quiz); UI.mountStack(this.quiz);
+  async start(){ try{ const [questions,wines]=await Promise.all([ DataLoader.loadQuestions(), DataLoader.loadWines() ]);
+      this.quiz=new QuizEngine(questions); this.repo=new WineRepo(wines); this.matcher=new Matcher(this.repo);
+      UI.linkButtons(this.quiz); UI.mountStack(this.quiz);
+      // Fallback: スタックが空ならメッセージ
+      if(!document.querySelector('#stack .card')){ document.getElementById('stack').innerHTML = `<div style='padding:16px;border:1px dashed var(--line);border-radius:12px;background:#fff'>データの読み込みに失敗しました。/data/questions.json か DefaultData を確認してください。</div>`; }
+    }catch(err){ console.error(err); document.getElementById('stack').innerHTML = `<div style='padding:16px;border:1px dashed var(--line);border-radius:12px;background:#fff'>スクリプトエラーが発生しました。</div>`; }
   }
 };
 
-app.start();
+window.addEventListener('DOMContentLoaded', ()=> app.start());
 </script>
 </body>
 </html>
